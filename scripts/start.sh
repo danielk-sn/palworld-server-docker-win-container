@@ -1,79 +1,79 @@
-#!/bin/bash
+# start.ps1
 
-STARTCOMMAND="./PalServer.sh"
+$StartCommand = ".\PalServer.exe"
 
-if [ -n "${PORT}" ]; then
-    STARTCOMMAND="${STARTCOMMAND} -port=${PORT}"
-fi
+if ($env:PORT) {
+    $StartCommand += " -port=$env:PORT"
+}
 
-if [ -n "${PLAYERS}" ]; then
-    STARTCOMMAND="${STARTCOMMAND} -players=${PLAYERS}"
-fi
+if ($env:PLAYERS) {
+    $StartCommand += " -players=$env:PLAYERS"
+}
 
-if [ "${COMMUNITY}" = true ]; then
-    STARTCOMMAND="${STARTCOMMAND} EpicApp=PalServer"
-fi
+if ($env:COMMUNITY -eq "true") {
+    $StartCommand += " EpicApp=PalServer"
+}
 
-if [ -n "${PUBLIC_IP}" ]; then
-    STARTCOMMAND="${STARTCOMMAND} -publicip=${PUBLIC_IP}"
-fi
+if ($env:PUBLIC_IP) {
+    $StartCommand += " -publicip=$env:PUBLIC_IP"
+}
 
-if [ -n "${PUBLIC_PORT}" ]; then
-    STARTCOMMAND="${STARTCOMMAND} -publicport=${PUBLIC_PORT}"
-fi
+if ($env:PUBLIC_PORT) {
+    $StartCommand += " -publicport=$env:PUBLIC_PORT"
+}
 
-if [ -n "${SERVER_NAME}" ]; then
-    STARTCOMMAND="${STARTCOMMAND} -servername=${SERVER_NAME}"
-fi
+if ($env:SERVER_NAME) {
+    $StartCommand += " -servername=$env:SERVER_NAME"
+}
 
-if [ -n "${SERVER_PASSWORD}" ]; then
-    STARTCOMMAND="${STARTCOMMAND} -serverpassword=${SERVER_PASSWORD}"
-fi
+if ($env:SERVER_PASSWORD) {
+    $StartCommand += " -serverpassword=$env:SERVER_PASSWORD"
+}
 
-if [ -n "${ADMIN_PASSWORD}" ]; then
-    STARTCOMMAND="${STARTCOMMAND} -adminpassword=${ADMIN_PASSWORD}"
-fi
+if ($env:ADMIN_PASSWORD) {
+    $StartCommand += " -adminpassword=$env:ADMIN_PASSWORD"
+}
 
-if [ -n "${QUERY_PORT}" ]; then
-    STARTCOMMAND="${STARTCOMMAND} -queryport=${QUERY_PORT}"
-fi
+if ($env:QUERY_PORT) {
+    $StartCommand += " -queryport=$env:QUERY_PORT"
+}
 
-if [ "${MULTITHREADING}" = true ]; then
-    STARTCOMMAND="${STARTCOMMAND} -useperfthreads -NoAsyncLoadingThread -UseMultithreadForDS"
-fi
+if ($env:MULTITHREADING -eq "true") {
+    $StartCommand += " -useperfthreads -NoAsyncLoadingThread -UseMultithreadForDS"
+}
 
-cd /palworld || exit
+Set-Location "C:\palworld"
 
-printf "\e[0;32m*****CHECKING FOR EXISTING CONFIG*****\e[0m\n"
+Write-Host -ForegroundColor Green "*****CHECKING FOR EXISTING CONFIG*****"
 
-if [ ! -f /palworld/Pal/Saved/Config/LinuxServer/PalWorldSettings.ini ]; then
+if (-not (Test-Path "C:\palworld\Pal\Saved\Config\WindowsServer\PalWorldSettings.ini")) {
+    Write-Host -ForegroundColor Green "*****GENERATING CONFIG*****"
 
-    printf "\e[0;32m*****GENERATING CONFIG*****\e[0m\n"
-
-    # Server will generate all ini files after first run.
-    su steam -c "timeout --preserve-status 15s ./PalServer.sh 1> /dev/null "
+    # Server will generate all ini files after first run. Adjust the executable name and path as necessary.
+    Start-Process ".\PalServer.exe" -ArgumentList "" -Wait -NoNewWindow
 
     # Wait for shutdown
-    sleep 5
-    cp /palworld/DefaultPalWorldSettings.ini /palworld/Pal/Saved/Config/LinuxServer/PalWorldSettings.ini
-fi
+    Start-Sleep -Seconds 5
+    Copy-Item "C:\palworld\DefaultPalWorldSettings.ini" -Destination "C:\palworld\Pal\Saved\Config\WindowsServer\PalWorldSettings.ini"
+}
 
-if [ -n "${RCON_ENABLED}" ]; then
-    echo "RCON_ENABLED=${RCON_ENABLED}"
-    sed -i "s/RCONEnabled=[a-zA-Z]*/RCONEnabled=$RCON_ENABLED/" /palworld/Pal/Saved/Config/LinuxServer/PalWorldSettings.ini
-fi
-if [ -n "${RCON_PORT}" ]; then
-    echo "RCON_PORT=${RCON_PORT}"
-    sed -i "s/RCONPort=[0-9]*/RCONPort=$RCON_PORT/" /palworld/Pal/Saved/Config/LinuxServer/PalWorldSettings.ini
-fi
+if ($env:RCON_ENABLED) {
+    (Get-Content "C:\palworld\Pal\Saved\Config\WindowsServer\PalWorldSettings.ini") -replace 'RCONEnabled=[a-zA-Z]*', "RCONEnabled=$env:RCON_ENABLED" | Set-Content "C:\palworld\Pal\Saved\Config\WindowsServer\PalWorldSettings.ini"
+}
+
+if ($env:RCON_PORT) {
+    (Get-Content "C:\palworld\Pal\Saved\Config\WindowsServer\PalWorldSettings.ini") -replace 'RCONPort=[0-9]*', "RCONPort=$env:RCON_PORT" | Set-Content "C:\palworld\Pal\Saved\Config\WindowsServer\PalWorldSettings.ini"
+}
 
 # Configure RCON settings
-cat >~/.rcon-cli.yaml  <<EOL
+@"
 host: localhost
-port: ${RCON_PORT}
-password: ${ADMIN_PASSWORD}
-EOL
+port: $env:RCON_PORT
+password: $env:ADMIN_PASSWORD
+"@ | Out-File -FilePath "$env:USERPROFILE\.rcon-cli.yaml"
 
-printf "\e[0;32m*****STARTING SERVER*****\e[0m\n"
-echo "${STARTCOMMAND}"
-su steam -c "${STARTCOMMAND}"
+Write-Host -ForegroundColor Green "*****STARTING SERVER*****"
+Write-Host $StartCommand
+
+# Start the server process (adjust the executable name and path as necessary)
+Start-Process ".\PalServer.exe" -ArgumentList $StartCommand.Split(' ') -NoNewWindow -Wait

@@ -1,17 +1,23 @@
-FROM cm2network/steamcmd:root
-LABEL maintainer="thijs@loef.dev"
+# Use steamcmd/steamcmd base image for Windows
+FROM steamcmd/steamcmd:windows-core
 
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    xdg-user-dirs=0.17-2 \
-    procps=2:3.3.17-5 \
-    wget=1.21-1+deb11u1 \
-    && apt-get clean \
-    && rm -rf /var/lib/apt/lists/*
+# Use PowerShell as the default shell
+SHELL ["powershell", "-Command", "$ErrorActionPreference = 'Stop';"]
 
-SHELL ["/bin/bash", "-o", "pipefail", "-c"]
-RUN wget -q https://github.com/itzg/rcon-cli/releases/download/1.6.4/rcon-cli_1.6.4_linux_amd64.tar.gz -O - | tar -xz && \
-    mv rcon-cli /usr/bin/rcon-cli
+# Update and install necessary packages (example with Chocolatey)
+RUN Set-ExecutionPolicy Bypass -Scope Process -Force; \
+    [System.Net.ServicePointManager]::SecurityProtocol = [System.Net.ServicePointManager]::SecurityProtocol -bor 3072; \
+    Invoke-Expression ((New-Object System.Net.WebClient).DownloadString('https://chocolatey.org/install.ps1')); \
+    choco install wget -y;
 
+# Download and install rcon-cli
+RUN wget 'https://github.com/itzg/rcon-cli/releases/download/1.6.4/rcon-cli_1.6.4_windows_amd64.zip' -OutFile 'rcon-cli.zip'; \
+    Expand-Archive 'rcon-cli.zip' -DestinationPath 'C:\'; \
+    Remove-Item 'rcon-cli.zip'; \
+    Move-Item 'C:\rcon-cli_1.6.4_windows_amd64\rcon-cli.exe' 'C:\Windows\System32\rcon-cli.exe'; \
+    Remove-Item -Recurse -Force 'C:\rcon-cli_1.6.4_windows_amd64';
+
+# Set environment variables
 ENV PORT= \
     PUID=1000 \
     PGID=1000 \
@@ -29,14 +35,21 @@ ENV PORT= \
     QUERY_PORT=27015 \
     TZ=UTC
 
-COPY ./scripts/* /home/steam/server/
-RUN chmod +x /home/steam/server/init.sh /home/steam/server/start.sh /home/steam/server/backup.sh && \
-    mv /home/steam/server/backup.sh /usr/local/bin/backup
+# Copy scripts
+COPY ./scripts/* C:/server/
+RUN Set-ExecutionPolicy Unrestricted; \
+    Get-ChildItem -Path C:/home/steam/server/*.ps1 | ForEach-Object { Unblock-File $_.FullName }
 
-WORKDIR /home/steam/server
+# Set the working directory
+WORKDIR C:/server
 
+# Health check (needs to be updated for Windows)
 HEALTHCHECK --start-period=5m \
-    CMD pgrep "PalServer-Linux" > /dev/null || exit 1
+    CMD powershell -command "if (Get-Process PalServer-Windows -ErrorAction SilentlyContinue) { exit 0 } else { exit 1 }"
 
+
+# Expose ports
 EXPOSE ${PORT} ${RCON_PORT}
-ENTRYPOINT ["/home/steam/server/init.sh"]
+
+# Entry point (might need to be updated for Windows)
+ENTRYPOINT ["C:/server/init.ps1"]

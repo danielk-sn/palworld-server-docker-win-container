@@ -1,12 +1,23 @@
-#!/bin/bash
+# backup.ps1
 
-if [ "${RCON_ENABLED}" = true ]; then
-        rcon-cli save
-fi
+if ($env:RCON_ENABLED -eq "true") {
+    & rcon-cli save
+}
 
-DATE=$(date +"%Y-%m-%d_%H-%M-%S")
-FILE_PATH="/palworld/backups/palworld-save-${DATE}.tar.gz"
-cd /palworld/Pal/ || exit
+$Date = Get-Date -Format "yyyy-MM-dd_HH-mm-ss"
+$FilePath = "C:\palworld\backups\palworld-save-$Date.zip"
+$SourceDir = "C:\palworld\Pal\Saved"
 
-tar -zcf "$FILE_PATH" "Saved/"
-echo "backup created at $FILE_PATH"
+# Ensure backup directory exists
+$BackupDir = "C:\palworld\backups"
+If (-not (Test-Path $BackupDir)) {
+    New-Item -ItemType Directory -Path $BackupDir
+}
+
+# Change to the source directory
+Set-Location $SourceDir
+
+# Create the backup
+Compress-Archive -LiteralPath "Saved" -DestinationPath $FilePath
+
+Write-Host "Backup created at $FilePath"

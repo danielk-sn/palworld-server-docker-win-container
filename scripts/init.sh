@@ -1,34 +1,40 @@
-#!/bin/bash
+# init.ps1
 
-if [[ ! "${PUID}" -eq 0 ]] && [[ ! "${PGID}" -eq 0 ]]; then
-    printf "\e[0;32m*****EXECUTING USERMOD*****\e[0m\n"
-    usermod -o -u "${PUID}" steam
-    groupmod -o -g "${PGID}" steam
-else
-    printf "\033[31mRunning as root is not supported, please fix your PUID and PGID!\n"
+# Check if PUID and PGID are not set to 0
+if ($env:PUID -ne "0" -and $env:PGID -ne "0") {
+    Write-Host -ForegroundColor Green "*****EXECUTING USERMOD*****"
+    # Windows doesn't support usermod/groupmod, consider implementing alternative user handling if needed
+} else {
+    Write-Host -ForegroundColor Red "Running as root is not supported, please fix your PUID and PGID!"
     exit 1
-fi
-
-mkdir -p /palworld/backups
-chown -R steam:steam /palworld
-
-if [ "${UPDATE_ON_BOOT}" = true ]; then
-    printf "\e[0;32m*****STARTING INSTALL/UPDATE*****\e[0m\n"
-    su steam -c '/home/steam/steamcmd/steamcmd.sh +force_install_dir "/palworld" +login anonymous +app_update 2394010 validate +quit'
-fi
-
-term_handler() {
-    if [ "${RCON_ENABLED}" = true ]; then
-        rcon-cli save
-        rcon-cli shutdown 1
-    else # Does not save
-        kill -SIGTERM "$(pidof PalServer-Linux-Test)"
-    fi
-    tail --pid=$killpid -f 2>/dev/null
 }
 
-trap 'term_handler' SIGTERM
+# Create directories and set ownership (adjust as needed for Windows)
+New-Item -ItemType Directory -Force -Path "C:\palworld\backups"
+# Ownership setting is not typically done in Windows as in Linux
 
-./start.sh &
-killpid="$!"
-wait $killpid
+# Update on boot
+if ($env:UPDATE_ON_BOOT -eq "true") {
+    Write-Host -ForegroundColor Green "*****STARTING INSTALL/UPDATE*****"
+    # Update the following line to match your Windows-based update process
+    & C:\steamcmd\steamcmd.exe +force_install_dir "C:\palworld" +login anonymous +app_update 2394010 validate +quit
+}
+
+# Define termination handler (needs adjustment for Windows)
+function term_handler {
+    if ($env:RCON_ENABLED -eq "true") {
+        # Adjust these commands for your Windows environment
+        & rcon-cli save
+        & rcon-cli shutdown 1
+    } else {
+        # Adjust process termination command for Windows
+        Stop-Process -Name "PalServer" -Force
+    }
+}
+
+# Setup a trap to handle script termination
+trap { term_handler }
+
+# Start the server (update this line to match your Windows server startup command)
+Start-Process "C:\path\to\start.ps1" -NoNewWindow -PassThru
+wait-process -Name "PalServer"
