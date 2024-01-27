@@ -1,6 +1,6 @@
 # start.ps1
 
-$StartCommand = ".\PalServer.exe"
+$StartCommand = "c:\palworld\PalServer.exe"
 
 if ($env:PORT) {
     $StartCommand += " -port=$env:PORT"
@@ -42,27 +42,27 @@ if ($env:MULTITHREADING -eq "true") {
     $StartCommand += " -useperfthreads -NoAsyncLoadingThread -UseMultithreadForDS"
 }
 
-Set-Location "C:\palworld"
-
 Write-Host -ForegroundColor Green "*****CHECKING FOR EXISTING CONFIG*****"
 
-if (-not (Test-Path "C:\palworld\Pal\Saved\Config\WindowsServer\PalWorldSettings.ini")) {
+if (-not (Test-Path "c:\palworld\Pal\Saved\Config\WindowsServer\PalWorldSettings.ini")) {
     Write-Host -ForegroundColor Green "*****GENERATING CONFIG*****"
-
-    # Server will generate all ini files after first run. Adjust the executable name and path as necessary.
-    Start-Process ".\PalServer.exe" -ArgumentList "" -Wait -NoNewWindow
+    ls palworld
+    # Start the process and capture the process information 
+    $process = Start-Process -FilePath "c:\palworld\PalServer.exe" -PassThru -Wait -NoNewWindow
+    # Use Stop-Process to kill the process
+    Stop-Process -Id $process.Id
 
     # Wait for shutdown
     Start-Sleep -Seconds 5
-    Copy-Item "C:\palworld\DefaultPalWorldSettings.ini" -Destination "C:\palworld\Pal\Saved\Config\WindowsServer\PalWorldSettings.ini"
+    Copy-Item "c:\palworld\DefaultPalWorldSettings.ini" -Destination "c:\palworld\Pal\Saved\Config\WindowsServer\PalWorldSettings.ini"
 }
 
 if ($env:RCON_ENABLED) {
-    (Get-Content "C:\palworld\Pal\Saved\Config\WindowsServer\PalWorldSettings.ini") -replace 'RCONEnabled=[a-zA-Z]*', "RCONEnabled=$env:RCON_ENABLED" | Set-Content "C:\palworld\Pal\Saved\Config\WindowsServer\PalWorldSettings.ini"
+    (Get-Content "c:\palworld\Pal\Saved\Config\WindowsServer\PalWorldSettings.ini") -replace 'RCONEnabled=[a-zA-Z]*', "RCONEnabled=$env:RCON_ENABLED" | Set-Content "c:\palworld\Pal\Saved\Config\WindowsServer\PalWorldSettings.ini"
 }
 
 if ($env:RCON_PORT) {
-    (Get-Content "C:\palworld\Pal\Saved\Config\WindowsServer\PalWorldSettings.ini") -replace 'RCONPort=[0-9]*', "RCONPort=$env:RCON_PORT" | Set-Content "C:\palworld\Pal\Saved\Config\WindowsServer\PalWorldSettings.ini"
+    (Get-Content "c:\palworld\Pal\Saved\Config\WindowsServer\PalWorldSettings.ini") -replace 'RCONPort=[0-9]*', "RCONPort=$env:RCON_PORT" | Set-Content "c:\palworld\Pal\Saved\Config\WindowsServer\PalWorldSettings.ini"
 }
 
 # Configure RCON settings
@@ -76,4 +76,4 @@ Write-Host -ForegroundColor Green "*****STARTING SERVER*****"
 Write-Host $StartCommand
 
 # Start the server process (adjust the executable name and path as necessary)
-Start-Process ".\PalServer.exe" -ArgumentList $StartCommand.Split(' ') -NoNewWindow -Wait
+Start-Process -FilePath "c:\palworld\PalServer.exe" -ArgumentList $StartCommand.Split(' ') -NoNewWindow -Wait

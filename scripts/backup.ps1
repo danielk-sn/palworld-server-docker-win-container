@@ -1,7 +1,7 @@
 # backup.ps1
 
 if ($env:RCON_ENABLED -eq "true") {
-    & rcon-cli save
+    & C:\rcon-cli.exe save
 }
 
 $Date = Get-Date -Format "yyyy-MM-dd_HH-mm-ss"
